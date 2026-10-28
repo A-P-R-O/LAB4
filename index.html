@@ -1,572 +1,666 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <title>Лабораторна робота №4 - Таксопарк</title>
-  <style>
-    .tab-content {
-      display: none;
-    }
-    .form-box {
-      margin-bottom: 20px;
-      padding: 12px;
-      border: 1px dashed #666;
-      background-color: #fafafa;
-      max-width: 700px;
-    }
-    .form-group {
-      margin-bottom: 8px;
-    }
-    .form-group label {
-      display: inline-block;
-      width: 190px;
-      font-weight: 500;
-    }
-    .form-group input, .form-group select {
-      padding: 4px 8px;
-      width: 260px;
-    }
-    table, th, td {
-      border: 1px solid #333;
-      border-collapse: collapse;
-      padding: 6px 10px;
-    }
-    th {
-      background-color: #eee;
-    }
-    .delete-btn {
-      color: red;
-      font-weight: bold;
-      cursor: pointer;
-      border: 1px solid red;
-      background: #ffe6e6;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-    .delete-btn:hover {
-      background: red;
-      color: white;
-    }
-    .editable-cell {
-      cursor: pointer;
-    }
-    .editable-cell:hover {
-      background-color: #fff9db;
-      outline: 1px dashed #caa100;
-    }
-    /* Попап модального вікна помилки цілісності зв'язків */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .modal-card {
-      background: white;
-      padding: 20px 25px;
-      border-radius: 6px;
-      max-width: 450px;
-      border: 2px solid #cc0000;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Лабораторна робота №4</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .tabs {
+            margin-bottom: 15px;
+        }
+        .tabs button {
+            padding: 8px 16px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .tabs button.active {
+            font-weight: bold;
+            background-color: #ddd;
+        }
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+        .form-box {
+            background-color: #f7f7f7;
+            border: 1px solid #ccc;
+            padding: 12px;
+            margin-bottom: 15px;
+            max-width: 650px;
+        }
+        .form-box div {
+            margin-bottom: 8px;
+        }
+        .form-box label {
+            display: inline-block;
+            width: 220px;
+        }
+        .form-box input, .form-box select {
+            width: 250px;
+            padding: 4px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 950px;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #999;
+            padding: 8px 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #eee;
+        }
+        /* Стиль клікабельних посилань для редагування */
+        a[data-action="Change"] {
+            color: #0044cc;
+            text-decoration: underline;
+            cursor: pointer;
+            display: inline-block;
+            min-width: 20px;
+        }
+        a[data-action="Change"]:hover {
+            color: #d9534f;
+        }
+        span[data-action="Remove"] {
+            color: red;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 2px 6px;
+            border: 1px solid red;
+            background: #ffebeb;
+            border-radius: 3px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        .modal-body {
+            background: #fff;
+            padding: 20px;
+            border: 2px solid red;
+            max-width: 420px;
+        }
+    </style>
 </head>
 <body>
 
-  <h1>Система керування таксопарком (ЛР №4)</h1>
+    <h1>Система керування таксопарком (ЛР №4)</h1>
 
-  <!-- Кнопки вкладок -->
-  <div id="tabs-navigation"></div>
-
-  <hr>
-
-  <!-- Контейнер для вмісту всіх сутностей -->
-  <div id="entities-container"></div>
-
-  <!-- Модальне вікно помилки цілісності зв'язків -->
-  <div id="error-modal" class="modal-overlay">
-    <div class="modal-card">
-      <h3 style="color: #cc0000; margin-top: 0;">Помилка видалення даних!</h3>
-      <p id="modal-error-message"></p>
-      <div style="text-align: right;">
-        <button type="button" id="modal-close-btn" style="padding: 6px 16px; cursor: pointer;">Зрозуміло</button>
-      </div>
+    <!-- 1. Навігація між табами -->
+    <div class="tabs" id="tabs-bar">
+        <button type="button" class="tab-button active" data-tab="tab-drivers">Водії</button>
+        <button type="button" class="tab-button" data-tab="tab-cars">Автомобілі</button>
+        <button type="button" class="tab-button" data-tab="tab-orders">Замовлення</button>
     </div>
-  </div>
 
-  <script>
-    const STORAGE_KEY = "taxi_management_lab4_db";
+    <!-- 2. Вкладка "Водії" -->
+    <div id="tab-drivers" class="tab-panel active">
+        <div class="form-box">
+            <h3>Додати водія</h3>
+            <form id="form-drivers">
+                <div><label>ID водія:</label><input type="number" name="id" required></div>
+                <div><label>ПІБ:</label><input type="text" name="name" required></div>
+                <div><label>Посвідчення:</label><input type="text" name="license" required></div>
+                <div><label>Телефон:</label><input type="text" name="phone" required></div>
+                <div><label>Рейтинг:</label><input type="number" step="0.1" min="1" max="5" name="rating" required></div>
+                <div>
+                    <label>Статус:</label>
+                    <select name="status">
+                        <option value="На лінії">На лінії</option>
+                        <option value="Вихідний">Вихідний</option>
+                        <option value="На зміні">На зміні</option>
+                    </select>
+                </div>
+                <button type="submit">Додати</button>
+            </form>
+        </div>
+        <div id="container-drivers"></div>
+    </div>
 
-    /**
-     * Початкові демо-дані (використовуються, якщо localStorage порожній)
-     */
-    const defaultData = {
-      drivers: {
-        title: "Водії",
-        columns: ["ID", "ПІБ", "Посвідчення", "Телефон", "Рейтинг", "Статус", "Дії"],
-        fields: [
-          { key: "id", label: "ID водія:", type: "number", editable: false },
-          { key: "name", label: "ПІБ:", type: "text", editable: true },
-          { key: "license", label: "№ Посвідчення:", type: "text", editable: true },
-          { key: "phone", label: "Телефон:", type: "text", editable: true },
-          { key: "rating", label: "Рейтинг (від 1 до 5):", type: "number", step: "0.01", min: "1", max: "5", editable: true },
-          { key: "status", label: "Статус:", type: "select", options: ["На лінії", "Вихідний", "На зміні", "На ремонті"], editable: true }
-        ],
-        items: [
-          { id: 1, name: "Кравченко Василь Олексійович", license: "BXT-102938", phone: "+380501112233", rating: 4.95, status: "На лінії" },
-          { id: 2, name: "Мельничук Олег Сергійович", license: "BXT-204958", phone: "+380672223344", rating: 4.82, status: "Вихідний" },
-          { id: 3, name: "Григоренко Іван Денисович", license: "BXT-394857", phone: "+380933334455", rating: 4.98, status: "На зміні" }
-        ]
-      },
-      cars: {
-        title: "Автомобілі",
-        columns: ["ID", "Марка / Модель", "Держ. номер", "Рік", "Клас авто", "Пробіг (км)", "Дії"],
-        fields: [
-          { key: "id", label: "ID авто:", type: "number", editable: false },
-          { key: "model", label: "Марка та модель:", type: "text", editable: true },
-          { key: "plate", label: "Держ. номер:", type: "text", editable: true },
-          { key: "year", label: "Рік випуску:", type: "number", min: "2000", max: "2026", editable: true },
-          { key: "category", label: "Клас автомобіля:", type: "select", options: ["Стандарт", "Комфорт+", "Бізнес", "Мінівен"], editable: true },
-          { key: "mileage", label: "Пробіг (км):", type: "number", editable: true }
-        ],
-        items: [
-          { id: 101, model: "Toyota Camry", plate: "BH 1234 CT", year: 2021, category: "Комфорт+", mileage: 85000 },
-          { id: 102, model: "Renault Megane", plate: "BH 5678 AA", year: 2019, category: "Стандарт", mileage: 142000 },
-          { id: 103, model: "Volkswagen Passat", plate: "BH 9988 OE", year: 2022, category: "Бізнес", mileage: 48000 }
-        ]
-      },
-      orders: {
-        title: "Замовлення",
-        columns: ["№ Замовлення", "Призначений водій", "Маршрут", "Тариф", "Вартість (грн)", "Статус", "Дії"],
-        fields: [
-          { key: "id", label: "№ Замовлення:", type: "number", editable: false },
-          // Поле driverId прив'язане до таблиці "Водії" (Вимога №4)
-          { key: "driverId", label: "Водій (із таблиці водіїв):", type: "relation", relationEntity: "drivers", relationDisplay: "name", relationKey: "id", editable: true },
-          { key: "route", label: "Маршрут (Звідки -> Куди):", type: "text", editable: true },
-          { key: "tariff", label: "Тариф:", type: "select", options: ["Стандарт", "Комфорт+", "Бізнес"], editable: true },
-          { key: "price", label: "Вартість (грн):", type: "number", editable: true },
-          { key: "state", label: "Статус замовлення:", type: "select", options: ["Прийнято", "У дорозі", "Виконано", "Скасовано"], editable: true }
-        ],
-        items: [
-          { id: 7001, driverId: 1, route: "вул. Дерибасівська, 1 -> Аеропорт", tariff: "Комфорт+", price: 320, state: "Виконано" },
-          { id: 7002, driverId: 3, route: "Залізничний вокзал -> Аркадія", tariff: "Бізнес", price: 280, state: "У дорозі" },
-          { id: 7003, driverId: 1, route: "просп. Шевченка, 12 -> вул. Балківська, 35", tariff: "Стандарт", price: 160, state: "Прийнято" }
-        ]
-      }
-    };
+    <!-- 3. Вкладка "Автомобілі" -->
+    <div id="tab-cars" class="tab-panel">
+        <div class="form-box">
+            <h3>Додати автомобіль</h3>
+            <form id="form-cars">
+                <div><label>ID авто:</label><input type="number" name="id" required></div>
+                <div><label>Марка / Модель:</label><input type="text" name="model" required></div>
+                <div><label>Держ. номер:</label><input type="text" name="plate" required></div>
+                <div><label>Рік випуску:</label><input type="number" min="2000" max="2026" name="year" required></div>
+                <div>
+                    <label>Клас:</label>
+                    <select name="category">
+                        <option value="Стандарт">Стандарт</option>
+                        <option value="Комфорт+">Комфорт+</option>
+                        <option value="Бізнес">Бізнес</option>
+                    </select>
+                </div>
+                <div><label>Пробіг (км):</label><input type="number" name="mileage" required></div>
+                <button type="submit">Додати</button>
+            </form>
+        </div>
+        <div id="container-cars"></div>
+    </div>
 
-    let domainData = null;
-    let currentActiveTab = "drivers";
+    <!-- 4. Вкладка "Замовлення" (з прив'язаним списком) -->
+    <div id="tab-orders" class="tab-panel">
+        <div class="form-box">
+            <h3>Додати замовлення</h3>
+            <form id="form-orders">
+                <div><label>№ Замовлення:</label><input type="number" name="id" required></div>
+                <div>
+                    <label>Водій (з таблиці):</label>
+                    <select name="driverId" id="select-order-driver" required></select>
+                </div>
+                <div><label>Маршрут:</label><input type="text" name="route" required></div>
+                <div><label>Вартість (грн):</label><input type="number" name="price" required></div>
+                <div>
+                    <label>Статус:</label>
+                    <select name="state">
+                        <option value="Прийнято">Прийнято</option>
+                        <option value="У дорозі">У дорозі</option>
+                        <option value="Виконано">Виконано</option>
+                    </select>
+                </div>
+                <button type="submit">Додати</button>
+            </form>
+        </div>
+        <div id="container-orders"></div>
+    </div>
 
-    /**
-     * Завантаження даних з localStorage (Вимога №1, №2)
-     */
-    function loadData() {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          domainData = defaultData;
-          // Відновлюємо саме списки items
-          Object.keys(domainData).forEach(key => {
-            if (parsed[key] && Array.isArray(parsed[key].items)) {
-              domainData[key].items = parsed[key].items;
+    <!-- Модальне вікно блокування видалення -->
+    <div id="error-modal" class="modal">
+        <div class="modal-body">
+            <h4 style="color:red; margin-top:0;">Помилка видалення</h4>
+            <p id="error-modal-text"></p>
+            <button type="button" id="error-modal-close">Закрити</button>
+        </div>
+    </div>
+
+    <script>
+        function Table(options) {
+            this.storageKey = options.storageKey;
+            this.columns = options.columns;
+            this.parent = options.container;
+            this.canRemove = options.canRemove || function() { return { allowed: true }; };
+            this.onDataChange = options.onDataChange || function() {};
+
+            this.list = [];
+            this.load();
+
+            this.createTableStructure();
+            this.tbody.addEventListener("click", this.onBehavior.bind(this), false);
+
+            this.render();
+        }
+
+        Table.prototype.load = function() {
+            try {
+                let data = JSON.parse(localStorage.getItem(this.storageKey));
+                if (data && Array.isArray(data) && data.length > 0) {
+                    this.list = data;
+                } else {
+                    this.list = [];
+                }
+            } catch (e) {
+                this.list = [];
             }
-          });
-          return;
-        } catch (e) {
-          console.error("Помилка читання localStorage, використовуємо дані за замовчуванням:", e);
-        }
-      }
-      domainData = JSON.parse(JSON.stringify(defaultData));
-      saveData();
-    }
+        };
 
-    /**
-     * Збереження актуальних даних у localStorage (Вимога №1)
-     */
-    function saveData() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(domainData));
-    }
+        Table.prototype.save = function() {
+            localStorage.setItem(this.storageKey, JSON.stringify(this.list));
+            this.onDataChange();
+        };
 
-    /**
-     * Модальне вікно для попередження про зв'язані сутності
-     */
-    function showErrorModal(message) {
-      const modal = document.getElementById("error-modal");
-      document.getElementById("modal-error-message").textContent = message;
-      modal.style.display = "flex";
-    }
+        Table.prototype.createTableStructure = function() {
+            this.parent.innerHTML = "";
 
-    document.getElementById("modal-close-btn").addEventListener("click", () => {
-      document.getElementById("error-modal").style.display = "none";
-    });
+            let table = document.createElement("TABLE");
+            let thead = document.createElement("THEAD");
+            let trHead = document.createElement("TR");
 
-    /**
-     * Перевірка зв'язків перед видаленням
-     */
-    function canDeleteRecord(entityKey, record) {
-      if (entityKey === "drivers") {
-        const relatedOrders = domainData.orders.items.filter(order => Number(order.driverId) === Number(record.id));
-        if (relatedOrders.length > 0) {
-          const orderNumbers = relatedOrders.map(o => `№${o.id}`).join(", ");
-          return {
-            allowed: false,
-            reason: `Неможливо видалити водія "${record.name}" (ID: ${record.id}). Дані використовуються в таблиці "Замовлення" для замовлень: ${orderNumbers}.`
-          };
-        }
-      }
-      return { allowed: true };
-    }
-
-    /**
-     * Отримання текстового відображення комірки
-     */
-    function getCellDisplayText(record, fieldConfig) {
-      if (fieldConfig.type === "relation") {
-        const relatedList = domainData[fieldConfig.relationEntity].items;
-        const found = relatedList.find(item => Number(item[fieldConfig.relationKey]) === Number(record[fieldConfig.key]));
-        return found ? `${found[fieldConfig.relationDisplay]} (ID: ${found.id})` : `[ID: ${record[fieldConfig.key]} не знайдено]`;
-      }
-      return record[fieldConfig.key] !== undefined ? record[fieldConfig.key] : "";
-    }
-
-    /**
-     * Інлайн-редагування комірки
-     */
-    function makeCellEditable(tdElement, record, fieldConfig) {
-      tdElement.classList.add("editable-cell");
-      tdElement.title = "Клацніть для зміни значення";
-
-      tdElement.addEventListener("click", function() {
-        if (tdElement.querySelector("input, select")) return;
-
-        const originalRawValue = record[fieldConfig.key];
-        tdElement.textContent = "";
-
-        let input;
-
-        if (fieldConfig.type === "relation") {
-          // Випадний список зі зв'язаної таблиці (Вимога №4)
-          input = document.createElement("select");
-          const relatedItems = domainData[fieldConfig.relationEntity].items;
-          relatedItems.forEach(relItem => {
-            const opt = document.createElement("option");
-            opt.value = relItem[fieldConfig.relationKey];
-            opt.textContent = `${relItem[fieldConfig.relationDisplay]} (ID: ${relItem.id})`;
-            if (Number(relItem[fieldConfig.relationKey]) === Number(originalRawValue)) {
-              opt.selected = true;
+            for (let i = 0; i < this.columns.length; i++) {
+                let th = document.createElement("TH");
+                th.textContent = this.columns[i].title;
+                trHead.appendChild(th);
             }
-            input.appendChild(opt);
-          });
-        } else if (fieldConfig.type === "select") {
-          input = document.createElement("select");
-          fieldConfig.options.forEach(optVal => {
-            const opt = document.createElement("option");
-            opt.value = optVal;
-            opt.textContent = optVal;
-            if (optVal === originalRawValue) opt.selected = true;
-            input.appendChild(opt);
-          });
-        } else {
-          input = document.createElement("input");
-          input.type = fieldConfig.type === "number" ? "number" : "text";
-          input.value = originalRawValue;
-          if (fieldConfig.step) input.step = fieldConfig.step;
+
+            let thAction = document.createElement("TH");
+            thAction.textContent = "Видалити";
+            trHead.appendChild(thAction);
+
+            thead.appendChild(trHead);
+            table.appendChild(thead);
+
+            this.tbody = document.createElement("TBODY");
+            table.appendChild(this.tbody);
+
+            this.parent.appendChild(table);
+        };
+
+        Table.prototype.clear = function() {
+            this.tbody.innerHTML = "";
+        };
+
+        Table.prototype.add = function(index) {
+            let tr = document.createElement("TR");
+            tr.setAttribute("data-index", index);
+
+            let rowData = this.list[index];
+
+            for (let i = 0; i < this.columns.length; i++) {
+                let col = this.columns[i];
+                let td = document.createElement("TD");
+
+                if (col.editable) {
+                    let a = document.createElement("A");
+                    a.href = "#";
+                    let val = rowData[col.key];
+                    a.innerText = (val !== undefined && val !== "") ? val : "--";
+                    a.setAttribute("data-action", "Change");
+                    a.setAttribute("data-field", col.key);
+                    td.appendChild(a);
+                } else if (typeof col.render === "function") {
+                    td.textContent = col.render(rowData);
+                } else {
+                    td.textContent = rowData[col.key];
+                }
+
+                tr.appendChild(td);
+            }
+
+            let tdRemove = document.createElement("TD");
+            let span = document.createElement("SPAN");
+            span.textContent = "X";
+            span.setAttribute("data-action", "Remove");
+            tdRemove.appendChild(span);
+            tr.appendChild(tdRemove);
+
+            this.tbody.appendChild(tr);
+        };
+
+        Table.prototype.render = function() {
+            this.clear();
+            for (let i = 0; i < this.list.length; i++) {
+                this.add(i);
+            }
+        };
+
+        Table.prototype.set = function(value) {
+            this.list.push(value);
+            this.save();
+            this.add(this.list.length - 1);
+        };
+
+        Table.prototype.onBehavior = function(event) {
+            let action = event.target.getAttribute("data-action");
+            if (action === null) return;
+
+            if (typeof this["on" + action] === "function") {
+                this["on" + action](event);
+            }
+        };
+
+        /**
+         * Метод onChange: створення input або select залежно від налаштувань стовпчика
+         */
+        Table.prototype.onChange = function(event) {
+            event.preventDefault();
+
+            let tr = event.target.closest("tr");
+            if (tr === null) return;
+
+            let index = Number(tr.getAttribute("data-index"));
+            let field = event.target.getAttribute("data-field");
+            let td = event.target.closest("td");
+
+            if (td.querySelector("input, select")) return;
+
+            // Знаходимо конфігурацію цієї колонки
+            let colConfig = null;
+            for (let i = 0; i < this.columns.length; i++) {
+                if (this.columns[i].key === field) {
+                    colConfig = this.columns[i];
+                    break;
+                }
+            }
+
+            let currentValue = this.list[index][field];
+            event.target.remove();
+
+            let isSaved = false;
+            let control;
+
+            // Якщо колонка передбачає вибір зі списку
+            if (colConfig && colConfig.options && Array.isArray(colConfig.options)) {
+                control = document.createElement("SELECT");
+                control.style.width = "95%";
+                control.style.padding = "3px";
+
+                for (let i = 0; i < colConfig.options.length; i++) {
+                    let optVal = colConfig.options[i];
+                    let option = document.createElement("OPTION");
+                    option.value = optVal;
+                    option.textContent = optVal;
+                    if (optVal === currentValue) {
+                        option.selected = true;
+                    }
+                    control.appendChild(option);
+                }
+
+                // Для select зміна зберігається одразу при виборі нового варіанта
+                control.addEventListener("change", function() {
+                    saveValue();
+                });
+            } else {
+                // Звичайне текстове поле
+                control = document.createElement("INPUT");
+                control.type = "text";
+                control.value = currentValue !== undefined ? currentValue : "";
+                control.style.width = "90%";
+                control.style.padding = "4px";
+
+                control.addEventListener("keydown", function(e) {
+                    if (e.key === "Enter" || e.keyCode === 13) {
+                        e.preventDefault();
+                        saveValue();
+                    }
+                });
+            }
+
+            let saveValue = function() {
+                if (isSaved) return;
+                isSaved = true;
+
+                let newValue = control.value.trim();
+                if (newValue !== "") {
+                    this.list[index][field] = newValue;
+                    this.save();
+                }
+
+                control.removeEventListener("blur", saveValue);
+                control.remove();
+
+                let a = document.createElement("A");
+                a.href = "#";
+                a.innerText = this.list[index][field];
+                a.setAttribute("data-action", "Change");
+                a.setAttribute("data-field", field);
+                td.appendChild(a);
+            }.bind(this);
+
+            control.addEventListener("blur", saveValue, false);
+
+            td.appendChild(control);
+            control.focus();
+            if (control.select) {
+                control.select();
+            }
+        };
+
+        Table.prototype.onRemove = function(event) {
+            event.preventDefault();
+
+            let tr = event.target.closest("tr");
+            if (tr === null) return;
+
+            let index = Number(tr.getAttribute("data-index"));
+            let record = this.list[index];
+
+            let check = this.canRemove(record);
+            if (!check.allowed) {
+                showModal(check.reason);
+                return;
+            }
+
+            if (!confirm("Ви впевнені, що хочете видалити цей рядок?")) {
+                return;
+            }
+
+            let list = [];
+            for (let i = 0; i < this.list.length; i++) {
+                if (i !== index) {
+                    list.push(this.list[i]);
+                }
+            }
+
+            this.list = list;
+            this.save();
+            this.render();
+        };
+
+        function showModal(text) {
+            document.getElementById("error-modal-text").textContent = text;
+            document.getElementById("error-modal").style.display = "flex";
         }
 
-        input.style.width = "95%";
-        tdElement.appendChild(input);
-        input.focus();
-
-        let isClosed = false;
-
-        function saveChange() {
-          if (isClosed) return;
-          isClosed = true;
-
-          let newVal = input.value;
-          if (fieldConfig.type === "number" || fieldConfig.type === "relation") {
-            newVal = Number(newVal);
-          }
-
-          record[fieldConfig.key] = newVal;
-          saveData(); // Збереження в localStorage
-          renderAll(); // Повне оновлення для актуалізації пов'язаних списків
-        }
-
-        function cancelChange() {
-          if (isClosed) return;
-          isClosed = true;
-          tdElement.textContent = getCellDisplayText(record, fieldConfig);
-        }
-
-        input.addEventListener("blur", saveChange);
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") saveChange();
-          if (e.key === "Escape") cancelChange();
+        document.getElementById("error-modal-close").addEventListener("click", function() {
+            document.getElementById("error-modal").style.display = "none";
         });
-      });
-    }
 
-    /**
-     * Створення окремого рядка таблиці
-     */
-    function createTableRow(record, entityKey, entityConfig) {
-      const tr = document.createElement("tr");
+        const defaultDrivers = [
+            { id: 1, name: "Коваленко Петро", license: "BXT-1029", phone: "+380501112233", rating: "4.9", status: "На лінії" },
+            { id: 2, name: "Сидоренко Олег", license: "BXT-2049", phone: "+380672223344", rating: "4.7", status: "Вихідний" }
+        ];
 
-      entityConfig.fields.forEach(field => {
-        const td = document.createElement("td");
-        td.textContent = getCellDisplayText(record, field);
+        const defaultCars = [
+            { id: 101, model: "Toyota Camry", plate: "BH 1234 AA", year: "2021", category: "Комфорт+", mileage: "75000" },
+            { id: 102, model: "Renault Megane", plate: "BH 5678 BB", year: "2019", category: "Стандарт", mileage: "120000" }
+        ];
 
-        if (field.editable) {
-          makeCellEditable(td, record, field);
+        const defaultOrders = [
+            { id: 7001, driverId: 1, route: "Центр -> Аеропорт", price: "300", state: "Виконано" }
+        ];
+
+        function checkOrResetStorage(key, defaults) {
+            try {
+                let data = JSON.parse(localStorage.getItem(key));
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    localStorage.setItem(key, JSON.stringify(defaults));
+                }
+            } catch (e) {
+                localStorage.setItem(key, JSON.stringify(defaults));
+            }
         }
 
-        tr.appendChild(td);
-      });
+        checkOrResetStorage("drivers_v5", defaultDrivers);
+        checkOrResetStorage("cars_v5", defaultCars);
+        checkOrResetStorage("orders_v5", defaultOrders);
 
-      // Стовпчик з дією (видалення)
-      const actionTd = document.createElement("td");
-      actionTd.style.textAlign = "center";
+        let driversTable = null;
+        let carsTable = null;
+        let ordersTable = null;
 
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "delete-btn";
-      deleteBtn.textContent = "✕";
-      deleteBtn.title = "Видалити";
+        function updateDriverSelect() {
+            let select = document.getElementById("select-order-driver");
+            if (!select) return;
+            select.innerHTML = "";
 
-      deleteBtn.addEventListener("click", () => {
-        const check = canDeleteRecord(entityKey, record);
-        if (!check.allowed) {
-          showErrorModal(check.reason);
-          return;
+            let drivers = driversTable ? driversTable.list : [];
+
+            if (drivers.length === 0) {
+                let opt = document.createElement("OPTION");
+                opt.value = "";
+                opt.textContent = "-- Спочатку додайте водія --";
+                select.appendChild(opt);
+                return;
+            }
+
+            for (let i = 0; i < drivers.length; i++) {
+                let opt = document.createElement("OPTION");
+                opt.value = drivers[i].id;
+                opt.textContent = drivers[i].name + " (ID: " + drivers[i].id + ")";
+                select.appendChild(opt);
+            }
         }
 
-        if (confirm("Підтвердіть видалення рядка:")) {
-          const index = entityConfig.items.indexOf(record);
-          if (index !== -1) {
-            entityConfig.items.splice(index, 1);
-            saveData(); // Збереження в localStorage
-            renderAll();
-          }
-        }
-      });
+        // 1. Таблиця водіїв: для "status" задано масив options (випадний список)
+        driversTable = new Table({
+            storageKey: "drivers_v5",
+            container: document.getElementById("container-drivers"),
+            columns: [
+                { key: "id", title: "ID", editable: false },
+                { key: "name", title: "ПІБ", editable: true },
+                { key: "license", title: "Посвідчення", editable: true },
+                { key: "phone", title: "Телефон", editable: true },
+                { key: "rating", title: "Рейтинг", editable: true },
+                { key: "status", title: "Статус", editable: true, options: ["На лінії", "Вихідний", "На зміні"] }
+            ],
+            canRemove: function(driver) {
+                let orders = ordersTable ? ordersTable.list : [];
+                for (let i = 0; i < orders.length; i++) {
+                    if (Number(orders[i].driverId) === Number(driver.id)) {
+                        return {
+                            allowed: false,
+                            reason: "Неможливо видалити водія " + driver.name + " (ID: " + driver.id + "), оскільки він використовується в замовленнях!"
+                        };
+                    }
+                }
+                return { allowed: true };
+            },
+            onDataChange: function() {
+                updateDriverSelect();
+                if (ordersTable) ordersTable.render();
+            }
+        });
 
-      actionTd.appendChild(deleteBtn);
-      tr.appendChild(actionTd);
+        // 2. Таблиця автомобілів: для "category" задано масив options (випадний список)
+        carsTable = new Table({
+            storageKey: "cars_v5",
+            container: document.getElementById("container-cars"),
+            columns: [
+                { key: "id", title: "ID", editable: false },
+                { key: "model", title: "Модель", editable: true },
+                { key: "plate", title: "Держ. номер", editable: true },
+                { key: "year", title: "Рік", editable: true },
+                { key: "category", title: "Клас", editable: true, options: ["Стандарт", "Комфорт+", "Бізнес"] },
+                { key: "mileage", title: "Пробіг", editable: true }
+            ]
+        });
 
-      return tr;
-    }
+        // 3. Таблиця замовлень: для "state" задано масив options (випадний список)
+        ordersTable = new Table({
+            storageKey: "orders_v5",
+            container: document.getElementById("container-orders"),
+            columns: [
+                { key: "id", title: "№", editable: false },
+                {
+                    key: "driverId",
+                    title: "Водій (зв'язок)",
+                    editable: false,
+                    render: function(row) {
+                        let drivers = driversTable ? driversTable.list : [];
+                        for (let i = 0; i < drivers.length; i++) {
+                            if (Number(drivers[i].id) === Number(row.driverId)) {
+                                return drivers[i].name + " (ID: " + drivers[i].id + ")";
+                            }
+                        }
+                        return "[ID: " + row.driverId + " не знайдено]";
+                    }
+                },
+                { key: "route", title: "Маршрут", editable: true },
+                { key: "price", title: "Вартість", editable: true },
+                { key: "state", title: "Статус", editable: true, options: ["Прийнято", "У дорозі", "Виконано"] }
+            ]
+        });
 
-    /**
-     * Створення форми додавання нового запису
-     */
-    function createAddForm(entityKey, entityConfig) {
-      const formWrapper = document.createElement("div");
-      formWrapper.className = "form-box";
+        updateDriverSelect();
 
-      const formTitle = document.createElement("h3");
-      formTitle.textContent = `Додати запис: ${entityConfig.title}`;
-      formWrapper.appendChild(formTitle);
-
-      const form = document.createElement("form");
-
-      entityConfig.fields.forEach(field => {
-        const group = document.createElement("div");
-        group.className = "form-group";
-
-        const label = document.createElement("label");
-        label.textContent = field.label;
-        label.htmlFor = `form-${entityKey}-${field.key}`;
-        group.appendChild(label);
-
-        let inputElement;
-
-        // Поле-зв'язок із випадним списком з іншої таблиці (Вимога №4)
-        if (field.type === "relation") {
-          inputElement = document.createElement("select");
-          const targetItems = domainData[field.relationEntity].items;
-
-          if (targetItems.length === 0) {
-            const emptyOpt = document.createElement("option");
-            emptyOpt.value = "";
-            emptyOpt.textContent = "-- Спочатку додайте водіїв у таблицю --";
-            inputElement.appendChild(emptyOpt);
-          } else {
-            targetItems.forEach(relItem => {
-              const opt = document.createElement("option");
-              opt.value = relItem[field.relationKey];
-              opt.textContent = `${relItem[field.relationDisplay]} (ID: ${relItem.id})`;
-              inputElement.appendChild(opt);
+        document.getElementById("form-drivers").addEventListener("submit", function(event) {
+            event.preventDefault();
+            let data = new FormData(event.target.closest("form"));
+            driversTable.set({
+                id: Number(data.get("id")),
+                name: data.get("name"),
+                license: data.get("license"),
+                phone: data.get("phone"),
+                rating: data.get("rating"),
+                status: data.get("status")
             });
-          }
-        } else if (field.type === "select") {
-          inputElement = document.createElement("select");
-          field.options.forEach(optVal => {
-            const opt = document.createElement("option");
-            opt.value = optVal;
-            opt.textContent = optVal;
-            inputElement.appendChild(opt);
-          });
-        } else {
-          inputElement = document.createElement("input");
-          inputElement.type = field.type;
-          if (field.step) inputElement.step = field.step;
-          if (field.min) inputElement.min = field.min;
-          if (field.max) inputElement.max = field.max;
-        }
-
-        inputElement.id = `form-${entityKey}-${field.key}`;
-        inputElement.name = field.key;
-        inputElement.required = true;
-
-        group.appendChild(inputElement);
-        form.appendChild(group);
-      });
-
-      const submitBtn = document.createElement("button");
-      submitBtn.type = "submit";
-      submitBtn.textContent = `+ Додати до таблиці "${entityConfig.title}"`;
-      submitBtn.style.padding = "6px 16px";
-      submitBtn.style.marginTop = "8px";
-      submitBtn.style.cursor = "pointer";
-      form.appendChild(submitBtn);
-
-      form.addEventListener("submit", function(e) {
-        e.preventDefault();
-        const formData = new FormData(form);
-        const newRecord = {};
-
-        entityConfig.fields.forEach(field => {
-          let val = formData.get(field.key);
-          if (field.type === "number" || field.type === "relation") {
-            val = Number(val);
-          }
-          newRecord[field.key] = val;
+            event.target.reset();
         });
 
-        entityConfig.items.push(newRecord);
-        saveData(); // Збереження в localStorage
-        renderAll();
-      });
-
-      formWrapper.appendChild(form);
-      return formWrapper;
-    }
-
-    /**
-     * Перемикання вкладок
-     */
-    function switchTab(targetKey) {
-      currentActiveTab = targetKey;
-      Object.keys(domainData).forEach(key => {
-        const block = document.getElementById(`section-${key}`);
-        if (block) {
-          block.style.display = (key === targetKey) ? "block" : "none";
-        }
-      });
-
-      document.querySelectorAll(".tab-btn").forEach(btn => {
-        if (btn.dataset.key === targetKey) {
-          btn.style.fontWeight = "bold";
-          btn.style.backgroundColor = "#e0e0e0";
-        } else {
-          btn.style.fontWeight = "normal";
-          btn.style.backgroundColor = "";
-        }
-      });
-    }
-
-    /**
-     * Повна генерація/перемальовування інтерфейсу
-     */
-    function renderAll() {
-      const nav = document.getElementById("tabs-navigation");
-      const container = document.getElementById("entities-container");
-
-      nav.innerHTML = "";
-      container.innerHTML = "";
-
-      const keys = Object.keys(domainData);
-
-      keys.forEach(key => {
-        const entity = domainData[key];
-
-        // Кнопка табу
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "tab-btn";
-        btn.dataset.key = key;
-        btn.textContent = entity.title;
-        btn.style.marginRight = "8px";
-        btn.style.padding = "6px 14px";
-        btn.style.cursor = "pointer";
-        btn.addEventListener("click", () => switchTab(key));
-        nav.appendChild(btn);
-
-        // Контейнер секції
-        const section = document.createElement("div");
-        section.id = `section-${key}`;
-        section.className = "tab-content";
-
-        const title = document.createElement("h2");
-        title.textContent = `Журнал: ${entity.title}`;
-        section.appendChild(title);
-
-        // Форма
-        const formBlock = createAddForm(key, entity);
-        section.appendChild(formBlock);
-
-        // Таблиця
-        const table = document.createElement("table");
-        const thead = document.createElement("thead");
-        const headerRow = document.createElement("tr");
-
-        entity.columns.forEach(col => {
-          const th = document.createElement("th");
-          th.textContent = col;
-          headerRow.appendChild(th);
+        document.getElementById("form-cars").addEventListener("submit", function(event) {
+            event.preventDefault();
+            let data = new FormData(event.target.closest("form"));
+            carsTable.set({
+                id: Number(data.get("id")),
+                model: data.get("model"),
+                plate: data.get("plate"),
+                year: data.get("year"),
+                category: data.get("category"),
+                mileage: data.get("mileage")
+            });
+            event.target.reset();
         });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
 
-        const tbody = document.createElement("tbody");
-        entity.items.forEach(record => {
-          const row = createTableRow(record, key, entity);
-          tbody.appendChild(row);
+        document.getElementById("form-orders").addEventListener("submit", function(event) {
+            event.preventDefault();
+            let data = new FormData(event.target.closest("form"));
+            let driverId = Number(data.get("driverId"));
+
+            if (!driverId) {
+                alert("Оберіть водія зі списку!");
+                return;
+            }
+
+            ordersTable.set({
+                id: Number(data.get("id")),
+                driverId: driverId,
+                route: data.get("route"),
+                price: data.get("price"),
+                state: data.get("state")
+            });
+            event.target.reset();
         });
-        table.appendChild(tbody);
 
-        section.appendChild(table);
-        container.appendChild(section);
-      });
+        document.getElementById("tabs-bar").addEventListener("click", function(event) {
+            let tabId = event.target.getAttribute("data-tab");
+            if (!tabId) return;
 
-      // Відновлюємо відкритий таб
-      switchTab(currentActiveTab);
-    }
+            let buttons = document.querySelectorAll(".tab-button");
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove("active");
+            }
 
-    /**
-     * Синхронізація між різними відкритими вкладками браузера (Вимога №3)
-     */
-    window.addEventListener("storage", function(event) {
-      if (event.key === STORAGE_KEY) {
-        loadData();
-        renderAll();
-      }
-    });
+            let panels = document.querySelectorAll(".tab-panel");
+            for (let i = 0; i < panels.length; i++) {
+                panels[i].classList.remove("active");
+            }
 
-    /**
-     * Старт при завантаженні сторінки
-     */
-    document.addEventListener("DOMContentLoaded", () => {
-      loadData();
-      renderAll();
-    });
-  </script>
+            event.target.classList.add("active");
+            let targetPanel = document.getElementById(tabId);
+            if (targetPanel) {
+                targetPanel.classList.add("active");
+            }
+        });
 
+        window.addEventListener("storage", function(event) {
+            if (event.key === "drivers_v5" && driversTable) {
+                driversTable.load();
+                driversTable.render();
+                updateDriverSelect();
+                if (ordersTable) ordersTable.render();
+            } else if (event.key === "cars_v5" && carsTable) {
+                carsTable.load();
+                carsTable.render();
+            } else if (event.key === "orders_v5" && ordersTable) {
+                ordersTable.load();
+                ordersTable.render();
+            }
+        });
+    </script>
 </body>
 </html>
